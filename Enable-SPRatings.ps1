@@ -8,6 +8,14 @@ param(
   [ValidateSet('Ratings','Likes','')] # '' disables
   [string]$RatingsType = 'Likes'
 )
+
+$Module = Get-Module -Name PnP.PowerShell -ListAvailable | Select-Object Name,Version
+if ($Module -eq $null) {
+  Write-Host "PnP.PowerShell module not found. Installing..."
+  Install-Module -Name PnP.PowerShell -Scope CurrentUser -Force
+} else {
+  Write-Host "PnP.PowerShell module found. Version: $($Module.Version)"
+}
  
 #Connect to SharePoint Online site
 Connect-PnPOnline $SiteURL -Interactive 
