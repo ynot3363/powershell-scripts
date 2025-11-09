@@ -1,0 +1,60 @@
+param(
+  [Parameter(Mandatory)]
+  [string]$SiteUrl,
+
+  [Parameter(Mandatory)]
+  [string]$ListName,
+
+  [Parameter(Mandatory)]
+  [string]$csvFilePath
+)
+
+function Add-Comment {
+    param (
+        $ItemID,
+        $CommentText
+    )
+    
+    $metadata = @{
+        "type" = "Microsoft.SharePoint.Comments.Comment"
+    }
+
+    $body = @{
+        "__metadata" = $metadata
+        "text" = $CommentText
+    }
+
+    $contentType = "application/json;odata=verbose"
+
+    Invoke-PnPSPRestMethod -Url "/_api/web/lists/GetByTitle('$ListName')/items($ItemID)/Comments()" -Method Post -ContentType $contentType -Content ($body)
+}
+
+$Module = Get-Module -Name PnP.PowerShell -ListAvailable | Select-Object Name,Version
+if ($Module -eq $null) {
+  Write-Host "PnP.PowerShell module not found. Installing..."
+  Install-Module -Name PnP.PowerShell -Scope CurrentUser -Force
+} else {
+  Write-Host "PnP.PowerShell module found. Version: $($Module.Version)"
+}
+ 
+#Connect to SharePoint Online site
+Connect-PnPOnline $SiteURL -Interactive 
+
+$csvData = Import-Csv -Path $csvFilePath
+
+foreach ($row in $csvData) {
+    $itemID = $row.ItemID
+    $commentText = $row.CommentText
+
+    if ([string]::IsNullOrWhiteSpace($itemID) -or [string]::IsNullOrWhiteSpace($commentText)) {
+        Write-Host "Skipping row with missing ItemID or CommentText."
+        continue
+    }
+
+    try {
+        Add-Comment -ItemID $itemID -CommentText $commentText
+        Write-Host "Added comment to item ID $itemID."
+    } catch {
+        Write-Host "Failed to add comment to item ID $itemID. Error: $_"
+    }
+}
